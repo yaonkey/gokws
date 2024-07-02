@@ -22,6 +22,10 @@ func NewEngine() Engine {
 		JSONDecoder: json.Unmarshal,
 	})
 
+	// static files
+	app.Static("/js", "./public/js")
+	app.Static("/css", "./public/css")
+
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello world from Fiber")
 	})
@@ -30,12 +34,10 @@ func NewEngine() Engine {
 	app.Get("/render", func(c *fiber.Ctx) error {
 		return c.Render("index", fiber.Map{
 			"Title": "Hello, World from Fiber!",
-		})
+		}, "layouts/main")
 	})
 
 	app.Use(recover.New())
-
-	app.Static("/", "./public")
 
 	// api
 	app.Get("/catalog", func(c *fiber.Ctx) error {
