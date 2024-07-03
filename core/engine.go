@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
 	jwtware "github.com/gofiber/contrib/jwt"
+	"github.com/gofiber/contrib/swagger"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -26,8 +27,16 @@ func NewEngine() Engine {
 		JSONDecoder: json.Unmarshal,
 	})
 
+	cfg := swagger.Config{
+		BasePath: "/",
+		FilePath: "./docs/swagger.json",
+		Path:     "swagger",
+		Title:    "Swagger API Docs",
+	}
+
 	app.Use(recover.New())
 	app.Use(cors.New())
+	app.Use(swagger.New(cfg))
 
 	app.Post("/login", loginHandler)
 	app.Use(jwtware.New(jwtware.Config{
