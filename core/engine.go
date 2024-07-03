@@ -2,9 +2,9 @@ package core
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gofiber/template/mustache/v2"
+	"github.com/yaonkey/gokws/handlers"
 
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
@@ -13,7 +13,6 @@ import (
 
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/contrib/swagger"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type Engine struct {
@@ -38,11 +37,11 @@ func NewEngine() Engine {
 	app.Use(cors.New())
 	app.Use(swagger.New(cfg))
 
-	app.Post("/login", loginHandler)
+	app.Post("/login", handlers.Login)
 	app.Use(jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte("secret")},
 	}))
-	app.Get("/restricted", restrictedHandler)
+	app.Get("/restricted", handlers.Restricted)
 
 	// static files
 	app.Static("/js", "./public/js")
@@ -85,36 +84,4 @@ func NewEngine() Engine {
 	return Engine{
 		App: app,
 	}
-}
-
-func loginHandler(c *fiber.Ctx) error {
-	login := c.FormValue("login")
-	password := c.FormValue("password")
-
-	// TODO: Throws Unauthorized error
-	if login != "admin" || password != "admin" {
-		return c.SendStatus(fiber.StatusUnauthorized)
-	}
-
-	claims := jwt.MapClaims{
-		"name":       "Admin",
-		"is_admin":   true,
-		"expired_at": time.Now().Add(time.Hour * 72).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	t, err := token.SignedString([]byte("env_secret")) // todo
-	if err != nil {
-		return c.SendStatus(fiber.StatusInternalServerError)
-	}
-
-	return c.JSON(fiber.Map{"token": t})
-}
-
-// todo change it
-func restrictedHandler(c *fiber.Ctx) error {
-	user := c.Locals("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	name := claims["name"].(string)
-	return c.SendString("Welcome " + name)
 }
