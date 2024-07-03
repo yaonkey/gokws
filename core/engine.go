@@ -2,6 +2,7 @@ package core
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gofiber/template/mustache/v2"
 
@@ -9,6 +10,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+
+	jwtware "github.com/gofiber/contrib/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Engine struct {
@@ -21,6 +25,15 @@ func NewEngine() Engine {
 		JSONEncoder: json.Marshal,
 		JSONDecoder: json.Unmarshal,
 	})
+
+	app.Use(recover.New())
+	app.Use(cors.New())
+
+	app.Post("/login", loginHandler)
+	app.Use(jwtware.New(jwtware.Config{
+		SigningKey: jwtware.SigningKey{Key: []byte("secret")},
+	}))
+	app.Get("/restricted", restrictedHandler)
 
 	// static files
 	app.Static("/js", "./public/js")
@@ -37,8 +50,6 @@ func NewEngine() Engine {
 		}, "layouts/main")
 	})
 
-	app.Use(recover.New())
-
 	// api
 	app.Get("/catalog", func(c *fiber.Ctx) error {
 		if len(c.Query("param")) == 0 {
@@ -54,8 +65,6 @@ func NewEngine() Engine {
 		})
 	})
 
-	app.Use(cors.New())
-
 	// middleware
 	app.Use(func(c *fiber.Ctx) error {
 		if c.Is("json") {
@@ -67,4 +76,36 @@ func NewEngine() Engine {
 	return Engine{
 		App: app,
 	}
+}
+
+func loginHandler(c *fiber.Ctx) error {
+	login := c.FormValue("login")
+	password := c.FormValue("password")
+
+	// TODO: Throws Unauthorized error
+	if login != "admin" || password != "admin" {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+
+	claims := jwt.MapClaims{
+		"name":       "Admin",
+		"is_admin":   true,
+		"expired_at": time.Now().Add(time.Hour * 72).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	t, err := token.SignedString([]byte("env_secret")) // todo
+	if err != nil {
+		return c.SendStatus(fiber.StatusInternalServerError)
+	}
+
+	return c.JSON(fiber.Map{"token": t})
+}
+
+// todo change it
+func restrictedHandler(c *fiber.Ctx) error {
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	name := claims["name"].(string)
+	return c.SendString("Welcome " + name)
 }
