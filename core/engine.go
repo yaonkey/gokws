@@ -28,10 +28,10 @@ func NewEngine() Engine {
 	})
 
 	cfg := swagger.Config{
-		BasePath: "/",
-		FilePath: "./docs/swagger.json",
-		Path:     "swagger",
-		Title:    "Swagger API Docs",
+		BasePath: "/api/v1/",
+		FilePath: "./docs/v1/swagger.json",
+		Path:     "docs",
+		Title:    "KWS API",
 	}
 
 	app.Use(recover.New())
